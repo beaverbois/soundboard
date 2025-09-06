@@ -8,3 +8,5 @@ wheels/
 
 # Virtual environments
 .venv
+*/sounds
+.DS_Store

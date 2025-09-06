@@ -1,0 +1,17 @@
+{% for sound in sounds %}
+<div class="button-container">
+    <button class="btn" 
+            hx-post="/api/play" 
+            hx-vals='{"name": "{{ sound.filename }}", "volume": "{{ current_volume }}"}'
+            hx-target="#status"
+            hx-trigger="click"
+            style="background: {{ sound.color.bg }}; --shadow: {{ sound.color.shadow }}"
+            aria-label="{{ sound.nice_label }}">
+    </button>
+    <span>{{ sound.nice_label }}</span>
+</div>
+{% endfor %}
+
+{% if not sounds %}
+<div id="no-sounds">No sounds found in /static/sounds</div>
+{% endif %}

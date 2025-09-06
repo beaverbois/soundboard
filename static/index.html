@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Soundboard</title>
+  <script src="/static/htmx.min.js"></script>
   <style>
     :root {
       --bg: #222;
@@ -128,70 +129,22 @@
   <div class="shell">
     <main class="content">
       <div class="soundboard" id="board" role="group" aria-label="Sound buttons">
-        <!-- Volume button (first) -->
-        <div class="button-container">
-          <button id="volBtn" class="btn btn-volume" aria-label="Volume"></button>
-          <span>Volume</span>
-        </div>
-        <!-- Sound buttons will be injected here -->
+        <!-- Sound buttons will be loaded here -->
+        <div hx-get="/api/sounds" hx-trigger="load" hx-swap="innerHTML"></div>
       </div>
-
+      
+      <!-- Status area for HTMX responses -->
+      <div id="status" class="status"></div>
     </main>
   </div>
 
   <script>
-    const statusEl = document.getElementById('status');
-    const volBtn = document.getElementById('volBtn');
-    const board = document.getElementById('board');
-
-    const VOL_SEQUENCE = [10, 50, 80, 100];
-    const VOL_CLASS_FOR = { 10: 'vol-10', 50: 'vol-50', 80: 'vol-80', 100: 'vol-100' };
-
-    // VIBRANT RAINBOW PALETTE
-    const PALETTE = [
-      { bg:'#ff1744', shadow:'#c20029' }, // vivid red
-      { bg:'#ff6d00', shadow:'#c25500' }, // deep orange
-      { bg:'#ffea00', shadow:'#c2b700' }, // bright yellow
-      { bg:'#00e676', shadow:'#00b85d' }, // neon green
-      { bg:'#00e5ff', shadow:'#00b6cc' }, // cyan
-      { bg:'#2979ff', shadow:'#1f5fcc' }, // strong blue
-      { bg:'#651fff', shadow:'#4e18c2' }, // indigo
-      { bg:'#d500f9', shadow:'#a600c6' }, // magenta
-      { bg:'#ff4081', shadow:'#c23365' }, // hot pink
-      { bg:'#7c4dff', shadow:'#5e3ac2' }, // violet
-      { bg:'#1de9b6', shadow:'#17b68f' }, // teal-mint
-      { bg:'#ffa000', shadow:'#c27c00' }  // amber
-    ];
-
-    // Pick a random color from palette each reload
-    function pickRandomColor() {
-      return PALETTE[Math.floor(Math.random() * PALETTE.length)];
-    }
-
-    let currentVolume = Number(localStorage.getItem('sb_volume') || '100');
-    if (!VOL_CLASS_FOR[currentVolume]) currentVolume = 100;
-    let volIndex = VOL_SEQUENCE.indexOf(currentVolume);
-    if (volIndex === -1) volIndex = VOL_SEQUENCE.indexOf(100);
-
-    function applyVolumeButtonStyle() {
-      volBtn.classList.remove('vol-10','vol-50','vol-80','vol-100');
-      volBtn.classList.add(VOL_CLASS_FOR[currentVolume]);
-      volBtn.setAttribute('aria-label', `Volume ${currentVolume}%`);
-    }
-
-    function cycleVolume() {
-      volIndex = (volIndex + 1) % VOL_SEQUENCE.length;
-      currentVolume = VOL_SEQUENCE[volIndex];
-      localStorage.setItem('sb_volume', String(currentVolume));
-      applyVolumeButtonStyle();
-      setStatus(`Volume: ${currentVolume}%`);
-    }
-
-    function setStatus(msg, ok = true) {
-      statusEl.textContent = msg || '';
-      statusEl.style.color = ok ? '#aaa' : '#f66';
-    }
-
+    // Add press animation for buttons
+    document.addEventListener('htmx:afterSettle', function(evt) {
+      // Re-bind animations to new buttons
+      document.querySelectorAll('.btn').forEach(bindPressAnimation);
+    });
+    
     function bindPressAnimation(btn) {
       const down = (e) => { if (e.cancelable) e.preventDefault(); btn.classList.add('pressed'); };
       const up = () => btn.classList.remove('pressed');
@@ -200,66 +153,11 @@
       btn.addEventListener('pointerleave', up);
       btn.addEventListener('pointercancel', up);
     }
-
-    function makeSoundButton(filename) {
-      const niceLabel = filename.replace(/\.mp3$/i,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
-      const wrap = document.createElement('div');
-      wrap.className = 'button-container';
-
-      const btn = document.createElement('button');
-      btn.className = 'btn';
-      btn.setAttribute('aria-label', niceLabel || filename);
-      btn.dataset.file = filename;
-
-      // Random vibrant color
-      const col = pickRandomColor();
-      btn.style.background = col.bg;
-      btn.style.setProperty('--shadow', col.shadow);
-
-      bindPressAnimation(btn);
-      btn.addEventListener('click', () => playSound(filename));
-
-      const label = document.createElement('span');
-      label.textContent = niceLabel || filename;
-
-      wrap.appendChild(btn);
-      wrap.appendChild(label);
-      return wrap;
-    }
-
-    async function loadSounds() {
-      try {
-        const res = await fetch('/api/sounds');
-        if (!res.ok) throw new Error('Failed to list sounds');
-        const files = await res.json();
-        files
-          .filter(f => typeof f === 'string' && f.toLowerCase().endsWith('.mp3'))
-          .forEach(f => board.appendChild(makeSoundButton(f)));
-        if (files.length === 0) setStatus('No sounds found in /static/sounds', false);
-      } catch (e) {
-        setStatus('Could not load sounds: ' + e.message, false);
-      }
-    }
-
-    async function playSound(file) {
-      try {
-        const res = await fetch('/api/play', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: file, volume: currentVolume })
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) throw new Error(data.detail || data.error || ('HTTP ' + res.status));
-        setStatus(`Now playing: ${file} (${currentVolume}%)`);
-      } catch (err) {
-        setStatus('Error: ' + err.message, false);
-      }
-    }
-
-    bindPressAnimation(volBtn);
-    volBtn.addEventListener('click', cycleVolume);
-    applyVolumeButtonStyle();
-    loadSounds();
+    
+    // Initialize animations for existing buttons
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.btn').forEach(bindPressAnimation);
+    });
   </script>
 </body>
 </html>
