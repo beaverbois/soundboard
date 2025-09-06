@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Soundboard</title>
+  <style>
+    :root {
+      --bg: #222;
+      --text: #eee;
+      --label: #eee;
+      --muted: #888;
+      --btn: #ff3333;
+      --btn-shadow: #cc0000;
+      --radius: 50%;
+
+      /* Volume button palette */
+      --vol-green:  #2ecc71;
+      --vol-green-shadow:  #1e9b52;
+      --vol-yellow: #f1c40f;
+      --vol-yellow-shadow: #b6930b;
+      --vol-orange: #e67e22;
+      --vol-orange-shadow: #b45717;
+      --vol-red:    #e74c3c;
+      --vol-red-shadow:    #b33a30;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .shell {
+      min-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .soundboard {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 30px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .button-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 6px;
+    }
+
+    .button-container span {
+      margin-top: 10px;
+      color: var(--label);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-align: center;
+      width: 110px;
+      word-break: break-word;
+    }
+
+    .btn {
+      width: 110px;
+      height: 110px;
+      border-radius: var(--radius);
+      background: var(--btn);
+      border: none;
+      cursor: pointer;
+      --shadow: var(--btn-shadow);
+      box-shadow: 0 8px 0 var(--shadow),
+                  0 12px 22px rgba(0,0,0,0.28);
+      transition: transform 0.1s ease-out, box-shadow 0.1s ease-out, background 0.15s ease-out;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      -webkit-user-select: none; user-select: none;
+    }
+    .btn:active,
+    .btn.pressed {
+      transform: translateY(8px);
+      box-shadow: 0 0 0 var(--shadow),
+                  0 4px 12px rgba(0,0,0,0.22);
+    }
+
+    .btn-volume.vol-10  { background: var(--vol-green);  --shadow: var(--vol-green-shadow); }
+    .btn-volume.vol-50  { background: var(--vol-yellow); --shadow: var(--vol-yellow-shadow); }
+    .btn-volume.vol-80  { background: var(--vol-orange); --shadow: var(--vol-orange-shadow); }
+    .btn-volume.vol-100 { background: var(--vol-red);    --shadow: var(--vol-red-shadow); }
+
+    .status {
+      width: 100%;
+      text-align: center;
+      min-height: 1.2em;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 640px) {
+      .btn {
+        width: 96px;
+        height: 96px;
+      }
+      .button-container span {
+        width: 96px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="content">
+      <div class="soundboard" id="board" role="group" aria-label="Sound buttons">
+        <!-- Volume button (first) -->
+        <div class="button-container">
+          <button id="volBtn" class="btn btn-volume" aria-label="Volume"></button>
+          <span>Volume</span>
+        </div>
+        <!-- Sound buttons will be injected here -->
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const volBtn = document.getElementById('volBtn');
+    const board = document.getElementById('board');
+
+    const VOL_SEQUENCE = [10, 50, 80, 100];
+    const VOL_CLASS_FOR = { 10: 'vol-10', 50: 'vol-50', 80: 'vol-80', 100: 'vol-100' };
+
+    // VIBRANT RAINBOW PALETTE
+    const PALETTE = [
+      { bg:'#ff1744', shadow:'#c20029' }, // vivid red
+      { bg:'#ff6d00', shadow:'#c25500' }, // deep orange
+      { bg:'#ffea00', shadow:'#c2b700' }, // bright yellow
+      { bg:'#00e676', shadow:'#00b85d' }, // neon green
+      { bg:'#00e5ff', shadow:'#00b6cc' }, // cyan
+      { bg:'#2979ff', shadow:'#1f5fcc' }, // strong blue
+      { bg:'#651fff', shadow:'#4e18c2' }, // indigo
+      { bg:'#d500f9', shadow:'#a600c6' }, // magenta
+      { bg:'#ff4081', shadow:'#c23365' }, // hot pink
+      { bg:'#7c4dff', shadow:'#5e3ac2' }, // violet
+      { bg:'#1de9b6', shadow:'#17b68f' }, // teal-mint
+      { bg:'#ffa000', shadow:'#c27c00' }  // amber
+    ];
+
+    // Pick a random color from palette each reload
+    function pickRandomColor() {
+      return PALETTE[Math.floor(Math.random() * PALETTE.length)];
+    }
+
+    let currentVolume = Number(localStorage.getItem('sb_volume') || '100');
+    if (!VOL_CLASS_FOR[currentVolume]) currentVolume = 100;
+    let volIndex = VOL_SEQUENCE.indexOf(currentVolume);
+    if (volIndex === -1) volIndex = VOL_SEQUENCE.indexOf(100);
+
+    function applyVolumeButtonStyle() {
+      volBtn.classList.remove('vol-10','vol-50','vol-80','vol-100');
+      volBtn.classList.add(VOL_CLASS_FOR[currentVolume]);
+      volBtn.setAttribute('aria-label', `Volume ${currentVolume}%`);
+    }
+
+    function cycleVolume() {
+      volIndex = (volIndex + 1) % VOL_SEQUENCE.length;
+      currentVolume = VOL_SEQUENCE[volIndex];
+      localStorage.setItem('sb_volume', String(currentVolume));
+      applyVolumeButtonStyle();
+      setStatus(`Volume: ${currentVolume}%`);
+    }
+
+    function setStatus(msg, ok = true) {
+      statusEl.textContent = msg || '';
+      statusEl.style.color = ok ? '#aaa' : '#f66';
+    }
+
+    function bindPressAnimation(btn) {
+      const down = (e) => { if (e.cancelable) e.preventDefault(); btn.classList.add('pressed'); };
+      const up = () => btn.classList.remove('pressed');
+      btn.addEventListener('pointerdown', down, { passive: false });
+      btn.addEventListener('pointerup', up);
+      btn.addEventListener('pointerleave', up);
+      btn.addEventListener('pointercancel', up);
+    }
+
+    function makeSoundButton(filename) {
+      const niceLabel = filename.replace(/\.mp3$/i,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
+      const wrap = document.createElement('div');
+      wrap.className = 'button-container';
+
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.setAttribute('aria-label', niceLabel || filename);
+      btn.dataset.file = filename;
+
+      // Random vibrant color
+      const col = pickRandomColor();
+      btn.style.background = col.bg;
+      btn.style.setProperty('--shadow', col.shadow);
+
+      bindPressAnimation(btn);
+      btn.addEventListener('click', () => playSound(filename));
+
+      const label = document.createElement('span');
+      label.textContent = niceLabel || filename;
+
+      wrap.appendChild(btn);
+      wrap.appendChild(label);
+      return wrap;
+    }
+
+    async function loadSounds() {
+      try {
+        const res = await fetch('/api/sounds');
+        if (!res.ok) throw new Error('Failed to list sounds');
+        const files = await res.json();
+        files
+          .filter(f => typeof f === 'string' && f.toLowerCase().endsWith('.mp3'))
+          .forEach(f => board.appendChild(makeSoundButton(f)));
+        if (files.length === 0) setStatus('No sounds found in /static/sounds', false);
+      } catch (e) {
+        setStatus('Could not load sounds: ' + e.message, false);
+      }
+    }
+
+    async function playSound(file) {
+      try {
+        const res = await fetch('/api/play', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: file, volume: currentVolume })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.detail || data.error || ('HTTP ' + res.status));
+        setStatus(`Now playing: ${file} (${currentVolume}%)`);
+      } catch (err) {
+        setStatus('Error: ' + err.message, false);
+      }
+    }
+
+    bindPressAnimation(volBtn);
+    volBtn.addEventListener('click', cycleVolume);
+    applyVolumeButtonStyle();
+    loadSounds();
+  </script>
+</body>
+</html>
+
