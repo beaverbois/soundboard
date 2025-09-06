@@ -1,1 +1,16 @@
-<div style="color: {{ color }};">{{ message }}</div>
+<div
+  class="p-4 rounded-lg text-center font-medium text-lg"
+  style="background-color: {{ color }}20; border: 2px solid {{ color }}; color: {{ color }};"
+  {%
+  if
+  redirect_delay
+  %}hx-get="/"
+  hx-target="body"
+  hx-swap="innerHTML"
+  hx-trigger="load delay:{{ redirect_delay }}s"
+  {%
+  endif
+  %}
+>
+  {{ message }}
+</div>

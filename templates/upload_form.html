@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Upload Sound - Soundboard</title>
+  <script src="/static/htmx.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'dark-bg': '#222',
+            'dark-text': '#eee',
+            'dark-muted': '#888'
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="min-h-screen bg-dark-bg text-dark-text font-sans">
+  <div class="min-h-screen flex items-center justify-center p-5">
+    <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-lg">
+      <form hx-post="/api/upload" hx-encoding="multipart/form-data" hx-target="#upload-status" hx-swap="innerHTML">
+      <h2 class="text-dark-text mb-6 text-center text-2xl font-medium">Upload New Sound</h2>
+      
+      <div class="mb-6">
+        <label for="sound_name" class="block text-dark-text mb-2 font-semibold">Sound Name:</label>
+        <input type="text" id="sound_name" name="sound_name" required placeholder="Enter a name for your sound" class="w-full p-3 border-2 border-gray-600 rounded-md bg-gray-700 text-dark-text text-base focus:outline-none focus:border-gray-500">
+      </div>
+      
+      <div class="mb-6">
+        <label for="button_color" class="block text-dark-text mb-2 font-semibold">Button Color:</label>
+        <div class="flex items-center gap-2">
+          <select id="button_color" name="button_color" onchange="updateColorPreview(this.value)" class="flex-1 p-3 border-2 border-gray-600 rounded-md bg-gray-700 text-dark-text text-base focus:outline-none focus:border-gray-500">
+            <option value="#ff1744" data-shadow="#c20029">Red</option>
+            <option value="#ff6d00" data-shadow="#c25500">Orange</option>
+            <option value="#ffea00" data-shadow="#c2b700">Yellow</option>
+            <option value="#00e676" data-shadow="#00b85d">Green</option>
+            <option value="#00e5ff" data-shadow="#00b6cc">Cyan</option>
+            <option value="#2979ff" data-shadow="#1f5fcc">Blue</option>
+            <option value="#651fff" data-shadow="#4e18c2">Purple</option>
+            <option value="#d500f9" data-shadow="#a600c6">Magenta</option>
+            <option value="#ff4081" data-shadow="#c23365">Pink</option>
+            <option value="#7c4dff" data-shadow="#5e3ac2">Indigo</option>
+            <option value="#1de9b6" data-shadow="#17b68f">Teal</option>
+            <option value="#ffa000" data-shadow="#c27c00">Amber</option>
+          </select>
+          <div class="w-10 h-10 rounded-full border-2 border-gray-600" id="color-preview" style="background: #ff1744;"></div>
+        </div>
+      </div>
+      
+      <div class="mb-6">
+        <label for="sound_file" class="block text-dark-text mb-2 font-semibold">Sound File:</label>
+        <input type="file" id="sound_file" name="sound_file" accept="audio/*" required class="w-full p-3 border-2 border-gray-600 rounded-md bg-gray-700 text-dark-text text-base focus:outline-none focus:border-gray-500">
+      </div>
+      
+        <div class="flex gap-4 mt-8">
+          <button type="button" class="flex-1 p-3 px-6 border-none rounded-md text-base font-semibold cursor-pointer transition-colors duration-200 bg-gray-600 text-white hover:bg-gray-700" hx-get="/" hx-target="body" hx-swap="innerHTML">Cancel</button>
+          <button type="submit" class="flex-1 p-3 px-6 border-none rounded-md text-base font-semibold cursor-pointer transition-colors duration-200 bg-blue-600 text-white hover:bg-blue-700">Upload Sound</button>
+        </div>
+      </form>
+      
+      <!-- Status message area -->
+      <div id="upload-status" class="mt-6 text-center"></div>
+    </div>
+  </div>
+
+  <script>
+    function updateColorPreview(color) {
+      document.getElementById('color-preview').style.background = color;
+    }
+
+    // Set random color immediately when script runs
+    function setRandomColor() {
+      const colorSelect = document.getElementById('button_color');
+      if (colorSelect) {
+        const options = colorSelect.options;
+        const randomIndex = Math.floor(Math.random() * options.length);
+        colorSelect.selectedIndex = randomIndex;
+        updateColorPreview(options[randomIndex].value);
+      }
+    }
+
+    // Call immediately and also on DOMContentLoaded as fallback
+    setRandomColor();
+    document.addEventListener('DOMContentLoaded', setRandomColor);
+  </script>
+</body>
+</html>

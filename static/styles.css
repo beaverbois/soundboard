@@ -1,0 +1,4 @@
+/* Custom button press animation for sound buttons */
+.btn.pressed {
+  transform: translateY(8px) !important;
+}

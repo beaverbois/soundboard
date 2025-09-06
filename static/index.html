@@ -1,164 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Soundboard</title>
-  <script src="/static/htmx.min.js"></script>
-  <style>
-    :root {
-      --bg: #222;
-      --text: #eee;
-      --label: #eee;
-      --muted: #888;
-      --btn: #ff3333;
-      --btn-shadow: #cc0000;
-      --radius: 50%;
-
-      /* Volume button palette */
-      --vol-green:  #2ecc71;
-      --vol-green-shadow:  #1e9b52;
-      --vol-yellow: #f1c40f;
-      --vol-yellow-shadow: #b6930b;
-      --vol-orange: #e67e22;
-      --vol-orange-shadow: #b45717;
-      --vol-red:    #e74c3c;
-      --vol-red-shadow:    #b33a30;
-    }
-
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: Arial, Helvetica, sans-serif;
-    }
-
-    .shell {
-      min-height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      box-sizing: border-box;
-      position: relative;
-    }
-
-    .content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      width: 100%;
-      max-width: 900px;
-    }
-
-    .soundboard {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 30px;
-      width: 100%;
-      margin: 0 auto;
-    }
-
-    .button-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 6px;
-    }
-
-    .button-container span {
-      margin-top: 10px;
-      color: var(--label);
-      font-size: 0.9rem;
-      font-weight: 600;
-      text-align: center;
-      width: 110px;
-      word-break: break-word;
-    }
-
-    .btn {
-      width: 110px;
-      height: 110px;
-      border-radius: var(--radius);
-      background: var(--btn);
-      border: none;
-      cursor: pointer;
-      --shadow: var(--btn-shadow);
-      box-shadow: 0 8px 0 var(--shadow),
-                  0 12px 22px rgba(0,0,0,0.28);
-      transition: transform 0.1s ease-out, box-shadow 0.1s ease-out, background 0.15s ease-out;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-      -webkit-user-select: none; user-select: none;
-    }
-    .btn:active,
-    .btn.pressed {
-      transform: translateY(8px);
-      box-shadow: 0 0 0 var(--shadow),
-                  0 4px 12px rgba(0,0,0,0.22);
-    }
-
-    .btn-volume.vol-10  { background: var(--vol-green);  --shadow: var(--vol-green-shadow); }
-    .btn-volume.vol-50  { background: var(--vol-yellow); --shadow: var(--vol-yellow-shadow); }
-    .btn-volume.vol-80  { background: var(--vol-orange); --shadow: var(--vol-orange-shadow); }
-    .btn-volume.vol-100 { background: var(--vol-red);    --shadow: var(--vol-red-shadow); }
-
-    .status {
-      width: 100%;
-      text-align: center;
-      min-height: 1.2em;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    @media (max-width: 640px) {
-      .btn {
-        width: 96px;
-        height: 96px;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Soundboard</title>
+    <script src="/static/htmx.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'dark-bg': '#222',
+              'dark-text': '#eee',
+              'dark-muted': '#888'
+            }
+          }
+        }
       }
-      .button-container span {
-        width: 96px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="shell">
-    <main class="content">
-      <div class="soundboard" id="board" role="group" aria-label="Sound buttons">
+    </script>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body class="min-h-screen bg-dark-bg text-dark-text font-sans">
+    <div class="min-h-screen flex items-center justify-center p-5 relative">
+      <main class="flex flex-col items-center gap-3 w-full max-w-4xl">
         <!-- Sound buttons will be loaded here -->
-        <div hx-get="/api/sounds" hx-trigger="load" hx-swap="innerHTML"></div>
-      </div>
-      
-      <!-- Status area for HTMX responses -->
-      <div id="status" class="status"></div>
-    </main>
-  </div>
+        <div
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-8 w-full mx-auto px-5 justify-items-center"
+          id="board"
+          role="group"
+          aria-label="Sound buttons"
+          hx-get="/api/sounds"
+          hx-trigger="load"
+          hx-swap="innerHTML"
+        ></div>
 
-  <script>
-    // Add press animation for buttons
-    document.addEventListener('htmx:afterSettle', function(evt) {
-      // Re-bind animations to new buttons
-      document.querySelectorAll('.btn').forEach(bindPressAnimation);
-    });
-    
-    function bindPressAnimation(btn) {
-      const down = (e) => { if (e.cancelable) e.preventDefault(); btn.classList.add('pressed'); };
-      const up = () => btn.classList.remove('pressed');
-      btn.addEventListener('pointerdown', down, { passive: false });
-      btn.addEventListener('pointerup', up);
-      btn.addEventListener('pointerleave', up);
-      btn.addEventListener('pointercancel', up);
-    }
-    
-    // Initialize animations for existing buttons
-    document.addEventListener('DOMContentLoaded', function() {
-      document.querySelectorAll('.btn').forEach(bindPressAnimation);
-    });
-  </script>
-</body>
+        <!-- Status area for HTMX responses -->
+        <div
+          id="status"
+          class="w-full text-center min-h-[1.2em] text-dark-muted text-sm"
+        ></div>
+      </main>
+    </div>
+
+    <script>
+      // Add press animation for buttons
+      document.addEventListener("htmx:afterSettle", function (evt) {
+        // Re-bind animations to new buttons
+        document.querySelectorAll(".btn").forEach(bindPressAnimation);
+      });
+
+      function bindPressAnimation(btn) {
+        const down = (e) => {
+          if (e.cancelable) e.preventDefault();
+          btn.classList.add("pressed");
+        };
+        const up = () => btn.classList.remove("pressed");
+        btn.addEventListener("pointerdown", down, { passive: false });
+        btn.addEventListener("pointerup", up);
+        btn.addEventListener("pointerleave", up);
+        btn.addEventListener("pointercancel", up);
+      }
+
+      // Initialize animations for existing buttons
+      document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".btn").forEach(bindPressAnimation);
+      });
+    </script>
+  </body>
 </html>
-
