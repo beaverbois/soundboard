@@ -2,3 +2,18 @@
 .btn.pressed {
   transform: translateY(8px) !important;
 }
+
+/* SortableJS styling */
+.sortable-ghost {
+  opacity: 0.6 !important;
+  filter: brightness(0.7) !important;
+}
+
+.sortable-chosen {
+  cursor: grabbing !important;
+}
+
+.sortable-drag {
+  opacity: 0.8;
+  transform: rotate(5deg);
+}

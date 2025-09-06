@@ -1,32 +1,96 @@
-{% for sound in sounds %}
-<div class="flex flex-col items-center flex-none">
+{% if sounds %} {% for sound in sounds %}
+<div
+  class="sound-item flex flex-col items-center flex-none relative"
+  data-filename="{{ sound.filename }}"
+  draggable="false"
+>
+  <!-- Edit button (always visible in edit mode) -->
   <button
-    class="btn w-28 h-28 rounded-full border-none cursor-pointer transition-all duration-100 ease-out select-none touch-manipulation shadow-[0_8px_0_color-mix(in_srgb,var(--btn-color)_70%,black),0_12px_22px_rgba(0,0,0,0.28)] active:translate-y-1 active:shadow-[0_0_0_color-mix(in_srgb,var(--btn-color)_70%,black),0_4px_12px_rgba(0,0,0,0.22)]"
+    class="edit-sound-btn absolute -top-2 -right-2 w-6 h-6 bg-gray-700 border border-gray-600 text-gray-300 rounded-full hover:bg-gray-600 hover:text-gray-200 transition-all duration-200 hidden z-10 flex items-center justify-center"
+    onclick="openSoundEditModal('{{ sound.filename }}', '{{ sound.nice_label }}', '{{ sound.color }}')"
+  >
+    <img
+      src="/static/icons/pencil.svg"
+      width="12"
+      height="12"
+      alt="Edit"
+      class="filter brightness-0 invert"
+    />
+  </button>
+
+  <button
+    class="btn w-28 h-28 rounded-full border-none cursor-pointer transition-all duration-100 ease-out select-none touch-manipulation shadow-[0_8px_0_color-mix(in_srgb,var(--btn-color)_70%,black),0_12px_22px_rgba(0,0,0,0.28)] active:translate-y-1 active:shadow-[0_0_0_color-mix(in_srgb,var(--btn-color)_70%,black),0_4px_12px_rgba(0,0,0,0.22)] relative"
     hx-post="/api/play"
     hx-vals='{"name": "{{ sound.filename }}", "volume": "{{ current_volume }}"}'
     hx-target="#status"
     hx-trigger="click"
     style="--btn-color: {{ sound.color }}; background: {{ sound.color }};"
     aria-label="{{ sound.nice_label }}"
-  ></button>
+    draggable="false"
+  >
+    <!-- Move icon overlay (visible in edit mode) -->
+    <div
+      class="move-overlay absolute inset-0 hidden flex items-center justify-center z-5 cursor-move"
+    >
+      <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="color-mix(in srgb, var(--btn-color) 70%, black)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2v20"/>
+        <path d="m15 19-3 3-3-3"/>
+        <path d="m19 9 3 3-3 3"/>
+        <path d="M2 12h20"/>
+        <path d="m5 9-3 3 3 3"/>
+        <path d="m9 5 3-3 3 3"/>
+      </svg>
+    </div>
+  </button>
   <span class="mt-5 text-dark-text font-semibold text-center w-28 break-words"
     >{{ sound.nice_label }}</span
   >
 </div>
 {% endfor %}
 
-<!-- Upload button -->
+<!-- Upload button when sounds exist -->
 <div class="flex flex-col items-center flex-none">
   <button
-    class="w-28 h-28 rounded-full bg-transparent border-4 border-dashed border-gray-500 cursor-pointer flex items-center justify-center transition-all duration-200 ease-out select-none touch-manipulation text-2xl text-gray-500 font-light hover:border-gray-400 hover:text-gray-400 active:translate-y-1 active:border-gray-300"
+    class="w-28 h-28 rounded-full bg-transparent border-4 border-dashed border-gray-500 cursor-pointer flex items-center justify-center transition-all duration-200 ease-out select-none touch-manipulation text-gray-500 hover:border-gray-400 hover:text-gray-400 active:translate-y-1 active:border-gray-300"
     hx-get="/upload"
     hx-target="body"
     hx-swap="innerHTML"
     aria-label="Upload new sound"
   >
-    ✚
+    <img
+      src="/static/icons/plus.svg"
+      width="32"
+      height="32"
+      alt="Upload"
+      class="filter brightness-0 invert opacity-50"
+    />
   </button>
   <span class="mt-5 text-dark-text font-semibold text-center w-28 break-words"
     >Upload</span
   >
 </div>
+{% else %}
+<!-- Centered upload button when no sounds exist -->
+<div class="col-span-full flex justify-center">
+  <div class="flex flex-col items-center">
+    <button
+      class="w-40 h-40 rounded-full bg-transparent border-4 border-dashed border-gray-500 cursor-pointer flex items-center justify-center transition-all duration-200 ease-out select-none touch-manipulation text-gray-500 hover:border-gray-400 hover:text-gray-400 active:translate-y-1 active:border-gray-300"
+      hx-get="/upload"
+      hx-target="body"
+      hx-swap="innerHTML"
+      aria-label="Upload your first sound"
+    >
+      <img
+        src="/static/icons/plus.svg"
+        width="48"
+        height="48"
+        alt="Upload"
+        class="filter brightness-0 invert opacity-50"
+      />
+    </button>
+    <span class="mt-5 text-dark-text font-semibold text-center text-lg"
+      >Upload your first sound</span
+    >
+  </div>
+</div>
+{% endif %}

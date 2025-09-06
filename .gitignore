@@ -8,5 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
-sounds/
+
+# macOS
 .DS_Store
+
+# Soundboard
+sounds/
+sounds_metadata.json

@@ -6,24 +6,138 @@
     <title>Soundboard</title>
     <script src="/static/htmx.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
             colors: {
-              'dark-bg': '#222',
-              'dark-text': '#eee',
-              'dark-muted': '#888'
-            }
-          }
-        }
-      }
+              "dark-bg": "#222",
+              "dark-text": "#eee",
+              "dark-muted": "#888",
+            },
+          },
+        },
+      };
     </script>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body class="min-h-screen bg-dark-bg text-dark-text font-sans">
-    <div class="min-h-screen flex items-center justify-center p-5 relative">
-      <main class="flex flex-col items-center gap-3 w-full max-w-4xl">
+    <div
+      class="min-h-screen flex flex-col items-center justify-center p-5 relative"
+    >
+      <!-- Edit button (top right) -->
+      <button
+        id="edit-btn"
+        class="fixed w-12 h-12 rounded-full border-2 border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300 bg-gray-800 hover:bg-gray-700 transition-all duration-200 flex items-center justify-center active:scale-95 top-4 right-4 z-10"
+        onclick="toggleEditMode()"
+        aria-label="Edit sounds"
+        style="display: none"
+      >
+        <img
+          src="/static/icons/pencil.svg"
+          width="20"
+          height="20"
+          alt="Edit"
+          class="filter brightness-0 invert"
+        />
+      </button>
+
+      <!-- Sound Edit Modal -->
+      <div
+        id="sound-edit-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden"
+      >
+        <div
+          class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-md mx-4 relative"
+        >
+          <!-- Trash icon (top right inside card) -->
+          <button
+            onclick="deleteSoundFromModal()"
+            class="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
+            aria-label="Delete sound"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M3 6h18" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
+
+          <h3 class="text-dark-text mb-4 text-xl font-semibold pr-12">
+            Edit Sound
+          </h3>
+
+          <div class="mb-4">
+            <label class="block text-dark-text mb-2 font-semibold"
+              >Sound Name:</label
+            >
+            <input
+              type="text"
+              id="edit-sound-name"
+              class="w-full p-3 border-2 border-gray-600 rounded-md bg-gray-700 text-dark-text text-base focus:outline-none focus:border-gray-500"
+            />
+          </div>
+
+          <div class="mb-6">
+            <label class="block text-dark-text mb-2 font-semibold"
+              >Button Color:</label
+            >
+            <div class="flex items-center gap-2">
+              <select
+                id="edit-button-color"
+                onchange="updateEditColorPreview(this.value)"
+                class="flex-1 p-3 border-2 border-gray-600 rounded-md bg-gray-700 text-dark-text text-base focus:outline-none focus:border-gray-500"
+              >
+                <option value="#ff1744" data-shadow="#c20029">Red</option>
+                <option value="#ff6d00" data-shadow="#c25500">Orange</option>
+                <option value="#ffea00" data-shadow="#c2b700">Yellow</option>
+                <option value="#00e676" data-shadow="#00b85d">Green</option>
+                <option value="#00e5ff" data-shadow="#00b6cc">Cyan</option>
+                <option value="#2979ff" data-shadow="#1f5fcc">Blue</option>
+                <option value="#651fff" data-shadow="#4e18c2">Purple</option>
+                <option value="#d500f9" data-shadow="#a600c6">Magenta</option>
+                <option value="#ff4081" data-shadow="#c23365">Pink</option>
+                <option value="#7c4dff" data-shadow="#5e3ac2">Indigo</option>
+                <option value="#1de9b6" data-shadow="#17b68f">Teal</option>
+                <option value="#ffa000" data-shadow="#c27c00">Amber</option>
+              </select>
+              <div
+                class="w-10 h-10 rounded-full border-2 border-gray-600"
+                id="edit-color-preview"
+              ></div>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <button
+              onclick="closeSoundEditModal()"
+              class="flex-1 p-3 px-6 border-none rounded-md text-base font-semibold cursor-pointer transition-colors duration-200 bg-gray-600 text-white hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              onclick="saveSoundChanges()"
+              class="flex-1 p-3 px-6 border-none rounded-md text-base font-semibold cursor-pointer transition-colors duration-200 bg-blue-600 text-white hover:bg-blue-700"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <main class="pt-12 flex flex-col items-center gap-3 w-full max-w-4xl">
         <!-- Sound buttons will be loaded here -->
         <div
           class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-8 w-full mx-auto px-5 justify-items-center"
@@ -44,10 +158,370 @@
     </div>
 
     <script>
+      let editMode = false;
+      let sortableInstance = null;
+
+      // Show/hide edit button based on sounds
+      function updateEditButtonVisibility() {
+        const editBtn = document.getElementById("edit-btn");
+        const soundItems = document.querySelectorAll(".sound-item");
+        console.log("Edit button visibility check:", {
+          editBtn,
+          soundItemsCount: soundItems.length,
+        });
+        if (soundItems.length > 0) {
+          editBtn.style.display = "flex";
+        } else {
+          editBtn.style.display = "none";
+        }
+      }
+
+      // Edit mode functions
+      function toggleEditMode() {
+        editMode = !editMode;
+        const editBtn = document.getElementById("edit-btn");
+        const soundItems = document.querySelectorAll(".sound-item");
+
+        if (editMode) {
+          editBtn.innerHTML =
+            '<img src="/static/icons/check.svg" width="20" height="20" alt="Done" class="filter brightness-0 invert">';
+          editBtn.classList.remove(
+            "border-gray-600",
+            "text-gray-400",
+            "hover:border-gray-500",
+            "hover:text-gray-300",
+            "bg-gray-800",
+            "hover:bg-gray-700"
+          );
+          editBtn.classList.add(
+            "border-green-600",
+            "text-green-400",
+            "hover:border-green-500",
+            "hover:text-green-300",
+            "bg-green-800",
+            "hover:bg-green-700"
+          );
+
+          const editSoundButtons = document.querySelectorAll(".edit-sound-btn");
+          const moveOverlays = document.querySelectorAll(".move-overlay");
+          const soundButtons = document.querySelectorAll(".btn");
+
+          editSoundButtons.forEach((btn) => btn.classList.remove("hidden"));
+          moveOverlays.forEach((overlay) => overlay.classList.remove("hidden"));
+          soundItems.forEach((item) => {
+            item.classList.add("cursor-move");
+          });
+
+          // Disable sound button clicks in edit mode
+          soundButtons.forEach((btn) => {
+            btn.style.pointerEvents = "none";
+          });
+
+          // Enable sortable
+          setupSortable();
+        } else {
+          editBtn.innerHTML =
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>';
+          editBtn.classList.remove(
+            "border-green-600",
+            "text-green-400",
+            "hover:border-green-500",
+            "hover:text-green-300",
+            "bg-green-800",
+            "hover:bg-green-700"
+          );
+          editBtn.classList.add(
+            "border-gray-600",
+            "text-gray-400",
+            "hover:border-gray-500",
+            "hover:text-gray-300",
+            "bg-gray-800",
+            "hover:bg-gray-700"
+          );
+
+          const editSoundButtons = document.querySelectorAll(".edit-sound-btn");
+          const moveOverlays = document.querySelectorAll(".move-overlay");
+          const soundButtons = document.querySelectorAll(".btn");
+
+          editSoundButtons.forEach((btn) => btn.classList.add("hidden"));
+          moveOverlays.forEach((overlay) => overlay.classList.add("hidden"));
+          soundItems.forEach((item) => {
+            item.classList.remove("cursor-move");
+          });
+
+          // Re-enable sound button clicks
+          soundButtons.forEach((btn) => {
+            btn.style.pointerEvents = "";
+          });
+
+          // Disable sortable
+          if (sortableInstance) {
+            sortableInstance.destroy();
+            sortableInstance = null;
+          }
+        }
+      }
+
+      function deleteSound(filename) {
+        fetch("/api/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `filename=${encodeURIComponent(filename)}`,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              htmx
+                .ajax("GET", "/api/sounds", {
+                  target: "#board",
+                  swap: "innerHTML",
+                })
+                .then(() => {
+                  // Re-setup drag and drop and show edit buttons if still in edit mode
+                  setupDragAndDrop();
+                  updateEditButtonVisibility();
+                  if (editMode) {
+                    const editSoundButtons =
+                      document.querySelectorAll(".edit-sound-btn");
+                    const moveOverlays =
+                      document.querySelectorAll(".move-overlay");
+                    const soundButtons = document.querySelectorAll(".btn");
+
+                    editSoundButtons.forEach((btn) =>
+                      btn.classList.remove("hidden")
+                    );
+                    moveOverlays.forEach((overlay) =>
+                      overlay.classList.remove("hidden")
+                    );
+                    soundButtons.forEach((btn) => {
+                      btn.style.pointerEvents = "none";
+                    });
+                  }
+                });
+            } else {
+              alert("Error deleting sound: " + data.error);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Error deleting sound");
+          });
+      }
+
+      function editSound(filename, currentName, currentColor) {
+        const newName = prompt("Enter new name:", currentName);
+        if (newName && newName !== currentName) {
+          const newColor = prompt("Enter new color (hex):", currentColor);
+          if (newColor) {
+            fetch("/api/edit", {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: `filename=${encodeURIComponent(
+                filename
+              )}&name=${encodeURIComponent(newName)}&color=${encodeURIComponent(
+                newColor
+              )}`,
+            }).then(() => {
+              htmx.trigger("#board", "load");
+            });
+          }
+        }
+      }
+
+      // SortableJS implementation
+      function setupSortable() {
+        const board = document.getElementById("board");
+        if (!board || sortableInstance) return;
+
+        sortableInstance = Sortable.create(board, {
+          animation: 150,
+          ghostClass: "sortable-ghost",
+          chosenClass: "sortable-chosen",
+          dragClass: "sortable-drag",
+          filter: ".flex.flex-col.items-center.flex-none:not(.sound-item)", // Exclude upload button
+          preventOnFilter: false,
+          onStart: function (evt) {
+            // Darken the original element when drag starts
+            evt.item.style.opacity = "0.5";
+            evt.item.style.filter = "brightness(0.6)";
+          },
+          onMove: function (evt) {
+            // Prevent moving after upload button
+            const uploadButton = board.querySelector(
+              ".flex.flex-col.items-center.flex-none:not(.sound-item)"
+            );
+            return evt.related !== uploadButton;
+          },
+          onEnd: function (evt) {
+            // Restore original element appearance
+            evt.item.style.opacity = "";
+            evt.item.style.filter = "";
+            // Save new order
+            saveOrder();
+          },
+        });
+      }
+
+      function saveOrder() {
+        const soundItems = document.querySelectorAll(".sound-item");
+        const order = Array.from(soundItems).map(
+          (item) => item.dataset.filename
+        );
+
+        if (order.length > 0) {
+          fetch("/api/reorder", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ order: order }),
+          }).catch((error) => {
+            console.error("Error saving order:", error);
+          });
+        }
+      }
+
+      // Modal functions
+      let currentEditingSound = null;
+
+      function openSoundEditModal(filename, name, color) {
+        currentEditingSound = filename;
+        document.getElementById("edit-sound-name").value = name;
+        document.getElementById("edit-button-color").value = color;
+        updateEditColorPreview(color);
+        document.getElementById("sound-edit-modal").classList.remove("hidden");
+      }
+
+      function closeSoundEditModal() {
+        currentEditingSound = null;
+        document.getElementById("sound-edit-modal").classList.add("hidden");
+      }
+
+      function updateEditColorPreview(color) {
+        document.getElementById("edit-color-preview").style.background = color;
+      }
+
+      function deleteSoundFromModal() {
+        if (currentEditingSound) {
+          fetch("/api/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `filename=${encodeURIComponent(currentEditingSound)}`,
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                htmx
+                  .ajax("GET", "/api/sounds", {
+                    target: "#board",
+                    swap: "innerHTML",
+                  })
+                  .then(() => {
+                    updateEditButtonVisibility();
+                    if (editMode) {
+                      const editSoundButtons =
+                        document.querySelectorAll(".edit-sound-btn");
+                      const moveOverlays =
+                        document.querySelectorAll(".move-overlay");
+                      const soundButtons = document.querySelectorAll(".btn");
+
+                      editSoundButtons.forEach((btn) =>
+                        btn.classList.remove("hidden")
+                      );
+                      moveOverlays.forEach((overlay) =>
+                        overlay.classList.remove("hidden")
+                      );
+                      soundButtons.forEach((btn) => {
+                        btn.style.pointerEvents = "none";
+                      });
+                      setupSortable();
+                    }
+                  });
+                closeSoundEditModal();
+              } else {
+                alert("Error deleting sound: " + data.error);
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              alert("Error deleting sound");
+            });
+        }
+      }
+
+      function saveSoundChanges() {
+        if (!currentEditingSound) return;
+
+        const newName = document.getElementById("edit-sound-name").value.trim();
+        const newColor = document.getElementById("edit-button-color").value;
+
+        if (!newName) {
+          alert("Please enter a sound name");
+          return;
+        }
+
+        fetch("/api/update", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            filename: currentEditingSound,
+            name: newName,
+            color: newColor,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              htmx
+                .ajax("GET", "/api/sounds", {
+                  target: "#board",
+                  swap: "innerHTML",
+                })
+                .then(() => {
+                  updateEditButtonVisibility();
+                  if (editMode) {
+                    const editSoundButtons =
+                      document.querySelectorAll(".edit-sound-btn");
+                    const moveOverlays =
+                      document.querySelectorAll(".move-overlay");
+                    const soundButtons = document.querySelectorAll(".btn");
+                    const soundItems = document.querySelectorAll(".sound-item");
+
+                    editSoundButtons.forEach((btn) =>
+                      btn.classList.remove("hidden")
+                    );
+                    moveOverlays.forEach((overlay) =>
+                      overlay.classList.remove("hidden")
+                    );
+                    soundItems.forEach((item) => {
+                      item.classList.add("cursor-move");
+                    });
+                    soundButtons.forEach((btn) => {
+                      btn.style.pointerEvents = "none";
+                    });
+                    setupSortable();
+                  }
+                });
+              closeSoundEditModal();
+            } else {
+              alert("Error updating sound: " + data.error);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Error updating sound");
+          });
+      }
+
       // Add press animation for buttons
       document.addEventListener("htmx:afterSettle", function (evt) {
-        // Re-bind animations to new buttons
         document.querySelectorAll(".btn").forEach(bindPressAnimation);
+        updateEditButtonVisibility();
+        if (editMode) {
+          setupSortable();
+        }
       });
 
       function bindPressAnimation(btn) {
@@ -65,6 +539,12 @@
       // Initialize animations for existing buttons
       document.addEventListener("DOMContentLoaded", function () {
         document.querySelectorAll(".btn").forEach(bindPressAnimation);
+        // Force show edit button for testing
+        const editBtn = document.getElementById("edit-btn");
+        if (editBtn) {
+          editBtn.style.display = "flex";
+        }
+        updateEditButtonVisibility();
       });
     </script>
   </body>

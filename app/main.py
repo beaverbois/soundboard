@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Form, UploadFile, File
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import FastAPI, Form, UploadFile, File, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
@@ -372,6 +372,91 @@ async def upload_sound(
             color="#f66"
         )
         return HTMLResponse(html_content)
+
+@app.post("/api/delete")
+async def delete_sound(filename: str = Form()):
+    """Delete a sound file and remove from metadata"""
+    try:
+        # Remove from metadata
+        metadata = load_metadata()
+        metadata["sounds"] = [s for s in metadata["sounds"] if s["filename"] != filename]
+        save_metadata(metadata)
+        
+        # Remove from audio cache
+        if filename in audio_cache:
+            del audio_cache[filename]
+        
+        # Remove file from disk
+        file_path = SOUNDS_DIR / filename
+        if file_path.exists():
+            file_path.unlink()
+        
+        return JSONResponse({"success": True})
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+@app.post("/api/update")
+async def update_sound(request: Request):
+    """Update sound name and color"""
+    try:
+        data = await request.json()
+        filename = data.get("filename")
+        name = data.get("name")
+        color = data.get("color")
+        
+        if not filename or not name or not color:
+            return JSONResponse({"success": False, "error": "Missing required fields"}, status_code=400)
+            
+        metadata = load_metadata()
+        for sound in metadata["sounds"]:
+            if sound["filename"] == filename:
+                sound["nice_label"] = name
+                sound["color"] = color
+                break
+        else:
+            return JSONResponse({"success": False, "error": "Sound not found"}, status_code=404)
+            
+        save_metadata(metadata)
+        return JSONResponse({"success": True})
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+@app.post("/api/edit")
+async def edit_sound(filename: str = Form(), name: str = Form(), color: str = Form()):
+    """Edit sound name and color"""
+    try:
+        metadata = load_metadata()
+        for sound in metadata["sounds"]:
+            if sound["filename"] == filename:
+                sound["nice_label"] = name
+                sound["color"] = color
+                break
+        save_metadata(metadata)
+        return JSONResponse({"success": True})
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+@app.post("/api/reorder")
+async def reorder_sounds(request: Request):
+    """Reorder sounds based on provided order"""
+    try:
+        data = await request.json()
+        order = data.get("order", [])
+        
+        metadata = load_metadata()
+        sounds_dict = {s["filename"]: s for s in metadata["sounds"]}
+        
+        # Reorder sounds based on the provided order
+        reordered_sounds = []
+        for filename in order:
+            if filename in sounds_dict:
+                reordered_sounds.append(sounds_dict[filename])
+        
+        metadata["sounds"] = reordered_sounds
+        save_metadata(metadata)
+        return JSONResponse({"success": True})
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
 
 if __name__ == "__main__":
