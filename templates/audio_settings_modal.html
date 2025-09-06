@@ -1,0 +1,53 @@
+<!-- Settings Panel -->
+<div
+  id="settings-panel"
+  class="fixed top-20 right-4 bg-gray-800 p-4 rounded-lg shadow-lg w-80 z-40 hidden"
+>
+  <h3 class="text-white text-lg font-semibold mb-4">Audio Settings</h3>
+  
+  <div class="mb-4">
+    <div class="flex justify-between items-center mb-2">
+      <label class="text-gray-300 text-sm font-medium">Output Device:</label>
+      <button
+        onclick="refreshAudioDevices()"
+        class="text-blue-400 text-sm hover:underline cursor-pointer"
+      >
+        Refresh
+      </button>
+    </div>
+    <select
+      id="device-select"
+      class="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:outline-none focus:border-gray-500"
+      onchange="selectAudioDevice(this.value)"
+    >
+      <option value="">Loading devices...</option>
+    </select>
+  </div>
+  
+  <div class="mb-4">
+    <label class="block text-gray-300 text-sm font-medium mb-2">Master Volume: <span id="volume-display">100%</span></label>
+    <input
+      type="range"
+      id="volume-slider"
+      min="0"
+      max="100"
+      value="100"
+      class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
+      oninput="updateMasterVolume(this.value)"
+    >
+    <div class="flex justify-between text-xs text-gray-400 mt-1">
+      <span>0%</span>
+      <span>50%</span>
+      <span>100%</span>
+    </div>
+  </div>
+  
+  <div class="flex justify-end">
+    <button
+      onclick="toggleSettingsPanel()"
+      class="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors"
+    >
+      Close
+    </button>
+  </div>
+</div>

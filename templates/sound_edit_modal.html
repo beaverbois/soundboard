@@ -1,0 +1,93 @@
+<!-- Sound Edit Modal -->
+<div
+  id="sound-edit-modal"
+  class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden"
+>
+  <div
+    class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-md mx-4 relative"
+  >
+    <!-- Trash icon (top right inside card) -->
+    <button
+      onclick="deleteSoundFromModal()"
+      class="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
+      aria-label="Delete sound"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M10 11v6" />
+        <path d="M14 11v6" />
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+        <path d="M3 6h18" />
+        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      </svg>
+    </button>
+
+    <h3 class="text-dark-text mb-4 text-xl font-semibold pr-12">
+      Edit Sound
+    </h3>
+
+    <div class="mb-4">
+      <label class="block text-dark-text mb-2 font-semibold"
+        >Sound Name:</label
+      >
+      <input
+        type="text"
+        id="edit-sound-name"
+        class="w-full p-3 border-2 border-gray-600 rounded-md bg-gray-700 text-dark-text text-base focus:outline-none focus:border-gray-500"
+      />
+    </div>
+
+    <div class="mb-6">
+      <label class="block text-dark-text mb-2 font-semibold"
+        >Button Color:</label
+      >
+      <div class="flex items-center gap-2">
+        <select
+          id="edit-button-color"
+          onchange="updateEditColorPreview(this.value)"
+          class="flex-1 p-3 border-2 border-gray-600 rounded-md bg-gray-700 text-dark-text text-base focus:outline-none focus:border-gray-500"
+        >
+          <option value="#ff1744" data-shadow="#c20029">Red</option>
+          <option value="#ff6d00" data-shadow="#c25500">Orange</option>
+          <option value="#ffea00" data-shadow="#c2b700">Yellow</option>
+          <option value="#00e676" data-shadow="#00b85d">Green</option>
+          <option value="#00e5ff" data-shadow="#00b6cc">Cyan</option>
+          <option value="#2979ff" data-shadow="#1f5fcc">Blue</option>
+          <option value="#651fff" data-shadow="#4e18c2">Purple</option>
+          <option value="#d500f9" data-shadow="#a600c6">Magenta</option>
+          <option value="#ff4081" data-shadow="#c23365">Pink</option>
+          <option value="#7c4dff" data-shadow="#5e3ac2">Indigo</option>
+          <option value="#1de9b6" data-shadow="#17b68f">Teal</option>
+          <option value="#ffa000" data-shadow="#c27c00">Amber</option>
+        </select>
+        <div
+          class="w-10 h-10 rounded-full border-2 border-gray-600"
+          id="edit-color-preview"
+        ></div>
+      </div>
+    </div>
+
+    <div class="flex gap-3">
+      <button
+        onclick="closeSoundEditModal()"
+        class="flex-1 p-3 px-6 border-none rounded-md text-base font-semibold cursor-pointer transition-colors duration-200 bg-gray-600 text-white hover:bg-gray-700"
+      >
+        Cancel
+      </button>
+      <button
+        onclick="saveSoundChanges()"
+        class="flex-1 p-3 px-6 border-none rounded-md text-base font-semibold cursor-pointer transition-colors duration-200 bg-blue-600 text-white hover:bg-blue-700"
+      >
+        Save
+      </button>
+    </div>
+  </div>
+</div>

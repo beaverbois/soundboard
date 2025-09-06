@@ -464,6 +464,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyjwt"
+version = "2.10.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e7/46/bd74733ff231675599650d3e47f361794b22ef3e3770998dda30d3b63726/pyjwt-2.10.1.tar.gz", hash = "sha256:3cc5772eb20009233caf06e9d8a0577824723b44e6648ee0a2aedb6cf9381953", size = 87785 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/61/ad/689f02752eeec26aed679477e80e632ef1b682313be70793d798c1d5fc8f/PyJWT-2.10.1-py3-none-any.whl", hash = "sha256:dcdd193e30abefd5debf142f9adfcdd2b58004e644f25406ffaebd50bd98dacb", size = 22997 },
+]
+
+[[package]]
 name = "python-dotenv"
 version = "1.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -676,6 +685,8 @@ dependencies = [
     { name = "jinja2" },
     { name = "numpy" },
     { name = "pydub" },
+    { name = "pyjwt" },
+    { name = "python-dotenv" },
     { name = "scipy" },
     { name = "sounddevice" },
     { name = "uvicorn" },
@@ -687,6 +698,8 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "pydub", specifier = ">=0.25.1" },
+    { name = "pyjwt", specifier = ">=2.8.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "scipy", specifier = ">=1.11.0" },
     { name = "sounddevice", specifier = ">=0.4.6" },
     { name = "uvicorn", specifier = ">=0.22.0" },

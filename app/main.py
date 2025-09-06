@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Form, UploadFile, File, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi import FastAPI, Form, UploadFile, File, Request, HTTPException, Depends, Cookie
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.security import HTTPBearer 
 from pathlib import Path
 import threading
 import uvicorn
@@ -11,12 +12,27 @@ import sounddevice as sd
 from pydub import AudioSegment
 from pydub.silence import detect_silence
 from pydub.effects import normalize
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import uuid
+import os
+from dotenv import load_dotenv
+import jwt
+from datetime import datetime, timedelta
+
+# Load environment variables
+load_dotenv()
 
 app = FastAPI()
 ROOT = Path(__file__).parent.resolve()
 templates = Jinja2Templates(directory=str(ROOT.parent / "templates"))
+
+# Authentication configuration
+SECRET_KEY = os.getenv("SECRET_KEY", "fallback_secret_key_change_in_production")
+SOUNDBOARD_PASSWORD = os.getenv("SOUNDBOARD_PASSWORD", "default_password")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_HOURS = 24
+
+security = HTTPBearer(auto_error=False)
 
 if (ROOT / "static").exists():
     STATIC_DIR = ROOT / "static"
@@ -34,6 +50,8 @@ sample_rate = 44100
 device_info = None
 active_streams = []
 MAX_CONCURRENT_STREAMS = 16
+selected_device_id = None  # User-selected audio output device
+master_volume = 1.0  # Master volume multiplier (0.0 to 1.0)
 
 # Initialize audio device
 try:
@@ -41,6 +59,39 @@ try:
     print(f"Available audio devices: {len(device_info)} found")
 except Exception as e:
     print(f"Warning: Could not query audio devices: {e}")
+
+def get_audio_devices():
+    """Get list of available audio output devices"""
+    try:
+        devices = sd.query_devices()
+        output_devices = []
+        
+        for i, device in enumerate(devices):
+            if device['max_output_channels'] > 0:  # Only output devices
+                output_devices.append({
+                    'id': i,
+                    'name': device['name'],
+                    'channels': device['max_output_channels'],
+                    'sample_rate': device['default_samplerate'],
+                    'is_default': i == sd.default.device[1]  # Check if it's default output
+                })
+        
+        return output_devices
+    except Exception as e:
+        print(f"Error getting audio devices: {e}")
+        return []
+
+def get_selected_device_id():
+    """Get the currently selected device ID, fallback to default"""
+    global selected_device_id
+    if selected_device_id is not None:
+        return selected_device_id
+    
+    # Try to get default output device
+    try:
+        return sd.default.device[1]  # Default output device
+    except:
+        return None
 
 def load_metadata() -> Dict[str, Any]:
     """Load sound metadata from JSON file"""
@@ -128,6 +179,31 @@ def process_audio_file(input_path: Path, output_path: Path) -> None:
     except Exception as e:
         raise Exception(f"Error processing audio: {e}")
 
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Create JWT access token"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def verify_token(token: str) -> bool:
+    """Verify JWT token"""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("authenticated") is True
+    except jwt.PyJWTError:
+        return False
+
+def get_current_user(auth_token: Optional[str] = Cookie(None)):
+    """Dependency to check authentication"""
+    if not auth_token or not verify_token(auth_token):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return True
+
 def cleanup_finished_streams():
     """Remove finished streams from active_streams list"""
     global active_streams
@@ -135,7 +211,7 @@ def cleanup_finished_streams():
 
 def play_sound_async(filename: str, volume: float = 1.0) -> None:
     """Play sound from cache using sounddevice with concurrent playback and stream management"""
-    global active_streams
+    global active_streams, master_volume
     
     if filename not in audio_cache:
         print(f"Sound {filename} not found in cache")
@@ -150,7 +226,9 @@ def play_sound_async(filename: str, volume: float = 1.0) -> None:
         return
     
     try:
-        samples = audio_cache[filename] * volume
+        # Apply both individual volume and master volume
+        final_volume = volume * master_volume
+        samples = audio_cache[filename] * final_volume
         
         # Create a new OutputStream for each sound to enable concurrent playback
         def audio_callback(outdata, frames, time, status):
@@ -189,12 +267,16 @@ def play_sound_async(filename: str, volume: float = 1.0) -> None:
         # Determine number of channels
         channels = 1 if len(samples.shape) == 1 else samples.shape[1]
         
+        # Get selected device
+        device_id = get_selected_device_id()
+        
         # Create the output stream
         stream = sd.OutputStream(
             samplerate=sample_rate,
             channels=max(channels, 2),  # Ensure at least stereo output
             callback=audio_callback,
-            finished_callback=lambda: cleanup_finished_streams()
+            finished_callback=lambda: cleanup_finished_streams(),
+            device=device_id
         )
         
         # Add to active streams list before starting
@@ -224,11 +306,52 @@ async def startup_event():
     load_audio_to_cache()
 
 @app.get("/")
-async def index():
+async def index(auth_token: Optional[str] = Cookie(None)):
+    if not auth_token or not verify_token(auth_token):
+        return RedirectResponse(url="/login", status_code=302)
     return FileResponse(STATIC_DIR / "index.html")
 
+@app.get("/login")
+async def login_page():
+    return FileResponse(ROOT.parent / "templates" / "login.html")
+
+@app.post("/api/login")
+async def login(password: str = Form()):
+    if password != SOUNDBOARD_PASSWORD:
+        html_content = templates.get_template("status_message.html").render(
+            message="Invalid password",
+            color="#f66"
+        )
+        return HTMLResponse(html_content)
+    
+    # Create access token
+    access_token_expires = timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    access_token = create_access_token(
+        data={"authenticated": True}, expires_delta=access_token_expires
+    )
+    
+    # Create response with redirect
+    response = HTMLResponse(
+        '<script>window.location.href = "/";</script>'
+    )
+    response.set_cookie(
+        key="auth_token",
+        value=access_token,
+        max_age=ACCESS_TOKEN_EXPIRE_HOURS * 3600,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax"
+    )
+    return response
+
+@app.post("/api/logout")
+async def logout():
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie(key="auth_token")
+    return response
+
 @app.get("/api/sounds")
-async def list_sounds():
+async def list_sounds(current_user: bool = Depends(get_current_user)):
     """Get sounds from metadata JSON store"""
     metadata = load_metadata()
     sounds = metadata.get("sounds", [])
@@ -240,7 +363,7 @@ async def list_sounds():
     return HTMLResponse(html_content)
 
 @app.post("/api/play")
-async def play(name: str = Form(), volume: str = Form("100")):
+async def play(name: str = Form(), volume: str = Form("100"), current_user: bool = Depends(get_current_user)):
     """Play sound using low-latency sounddevice from RAM cache"""
     name = (name or "").strip()
     from pathlib import Path as _P
@@ -272,14 +395,23 @@ async def play(name: str = Form(), volume: str = Form("100")):
     return HTMLResponse("")
 
 @app.get("/upload")
-async def upload_form():
+async def upload_form(current_user: bool = Depends(get_current_user)):
     return FileResponse(ROOT.parent / "templates" / "upload_form.html")
+
+@app.get("/templates/audio_settings_modal")
+async def audio_settings_modal(current_user: bool = Depends(get_current_user)):
+    return FileResponse(ROOT.parent / "templates" / "audio_settings_modal.html")
+
+@app.get("/templates/sound_edit_modal")
+async def sound_edit_modal(current_user: bool = Depends(get_current_user)):
+    return FileResponse(ROOT.parent / "templates" / "sound_edit_modal.html")
 
 @app.post("/api/upload")
 async def upload_sound(
     sound_name: str = Form(),
     button_color: str = Form("#ff1744"),
-    sound_file: UploadFile = File()
+    sound_file: UploadFile = File(),
+    current_user: bool = Depends(get_current_user)
 ):
     """Upload and process audio file, convert to WAV, and add to metadata"""
     # Validate inputs
@@ -374,7 +506,7 @@ async def upload_sound(
         return HTMLResponse(html_content)
 
 @app.post("/api/delete")
-async def delete_sound(filename: str = Form()):
+async def delete_sound(filename: str = Form(), current_user: bool = Depends(get_current_user)):
     """Delete a sound file and remove from metadata"""
     try:
         # Remove from metadata
@@ -396,7 +528,7 @@ async def delete_sound(filename: str = Form()):
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
 @app.post("/api/update")
-async def update_sound(request: Request):
+async def update_sound(request: Request, current_user: bool = Depends(get_current_user)):
     """Update sound name and color"""
     try:
         data = await request.json()
@@ -422,7 +554,7 @@ async def update_sound(request: Request):
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
 @app.post("/api/edit")
-async def edit_sound(filename: str = Form(), name: str = Form(), color: str = Form()):
+async def edit_sound(filename: str = Form(), name: str = Form(), color: str = Form(), current_user: bool = Depends(get_current_user)):
     """Edit sound name and color"""
     try:
         metadata = load_metadata()
@@ -437,7 +569,7 @@ async def edit_sound(filename: str = Form(), name: str = Form(), color: str = Fo
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
 @app.post("/api/reorder")
-async def reorder_sounds(request: Request):
+async def reorder_sounds(request: Request, current_user: bool = Depends(get_current_user)):
     """Reorder sounds based on provided order"""
     try:
         data = await request.json()
@@ -457,6 +589,72 @@ async def reorder_sounds(request: Request):
         return JSONResponse({"success": True})
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+@app.get("/api/audio-devices")
+async def get_devices(current_user: bool = Depends(get_current_user)):
+    """Get list of available audio output devices"""
+    devices = get_audio_devices()
+    current_device = get_selected_device_id()
+    volume_percent = int(master_volume * 100)
+    
+    return JSONResponse({
+        "devices": devices,
+        "current_device": current_device,
+        "volume": volume_percent
+    })
+
+@app.post("/api/select-device")
+async def select_device(request: Request, current_user: bool = Depends(get_current_user)):
+    """Select audio output device"""
+    global selected_device_id
+    
+    try:
+        data = await request.json()
+        device_id = data.get("device_id")
+        
+        if device_id is not None:
+            # Validate device exists
+            devices = get_audio_devices()
+            valid_device_ids = [d["id"] for d in devices]
+            
+            if device_id in valid_device_ids:
+                selected_device_id = device_id
+                return JSONResponse({"success": True, "device_id": device_id})
+            else:
+                return JSONResponse({"success": False, "error": "Invalid device ID"}, status_code=400)
+        else:
+            return JSONResponse({"success": False, "error": "Device ID required"}, status_code=400)
+            
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+@app.post("/api/set-volume")
+async def set_volume(request: Request, current_user: bool = Depends(get_current_user)):
+    """Set master volume level"""
+    global master_volume
+    
+    try:
+        data = await request.json()
+        volume = data.get("volume")
+        
+        if volume is not None:
+            # Convert percentage (0-100) to float (0.0-1.0)
+            volume_float = max(0.0, min(100.0, float(volume))) / 100.0
+            master_volume = volume_float
+            return JSONResponse({"success": True, "volume": volume})
+        else:
+            return JSONResponse({"success": False, "error": "Volume required"}, status_code=400)
+            
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+@app.get("/api/get-volume")
+async def get_volume(current_user: bool = Depends(get_current_user)):
+    """Get current master volume level"""
+    global master_volume
+    # Convert float (0.0-1.0) to percentage (0-100)
+    volume_percent = int(master_volume * 100)
+    return JSONResponse({"volume": volume_percent})
 
 
 if __name__ == "__main__":

@@ -29,7 +29,7 @@
       <!-- Edit button (top right) -->
       <button
         id="edit-btn"
-        class="fixed w-12 h-12 rounded-full border-2 border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300 bg-gray-800 hover:bg-gray-700 transition-all duration-200 flex items-center justify-center active:scale-95 top-4 right-4 z-10"
+        class="fixed w-12 h-12 rounded-full border-2 border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300 bg-gray-800 hover:bg-gray-700 transition-all duration-200 flex items-center justify-center active:scale-95 top-4 right-20 z-10"
         onclick="toggleEditMode()"
         aria-label="Edit sounds"
         style="display: none"
@@ -43,101 +43,37 @@
         />
       </button>
 
-      <!-- Sound Edit Modal -->
-      <div
-        id="sound-edit-modal"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden"
+      <!-- Settings button (top right, to the right of edit button) -->
+      <button
+        id="settings-btn"
+        class="fixed w-12 h-12 rounded-full border-2 border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300 bg-gray-800 hover:bg-gray-700 transition-all duration-200 flex items-center justify-center active:scale-95 top-4 right-4 z-10"
+        onclick="toggleSettingsPanel()"
+        aria-label="Settings"
       >
-        <div
-          class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-md mx-4 relative"
-        >
-          <!-- Trash icon (top right inside card) -->
-          <button
-            onclick="deleteSoundFromModal()"
-            class="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
-            aria-label="Delete sound"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M10 11v6" />
-              <path d="M14 11v6" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-              <path d="M3 6h18" />
-              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            </svg>
-          </button>
+        <img
+          src="/static/icons/gear.svg"
+          width="20"
+          height="20"
+          alt="Settings"
+          class="filter brightness-0 invert"
+        />
+      </button>
 
-          <h3 class="text-dark-text mb-4 text-xl font-semibold pr-12">
-            Edit Sound
-          </h3>
+      <!-- Audio Settings Modal (included from template) -->
+      <div
+        hx-get="/templates/audio_settings_modal"
+        hx-trigger="load"
+        hx-swap="outerHTML"
+      ></div>
 
-          <div class="mb-4">
-            <label class="block text-dark-text mb-2 font-semibold"
-              >Sound Name:</label
-            >
-            <input
-              type="text"
-              id="edit-sound-name"
-              class="w-full p-3 border-2 border-gray-600 rounded-md bg-gray-700 text-dark-text text-base focus:outline-none focus:border-gray-500"
-            />
-          </div>
+      <!-- Sound Edit Modal (included from template) -->
+      <div
+        hx-get="/templates/sound_edit_modal"
+        hx-trigger="load"
+        hx-swap="outerHTML"
+      ></div>
 
-          <div class="mb-6">
-            <label class="block text-dark-text mb-2 font-semibold"
-              >Button Color:</label
-            >
-            <div class="flex items-center gap-2">
-              <select
-                id="edit-button-color"
-                onchange="updateEditColorPreview(this.value)"
-                class="flex-1 p-3 border-2 border-gray-600 rounded-md bg-gray-700 text-dark-text text-base focus:outline-none focus:border-gray-500"
-              >
-                <option value="#ff1744" data-shadow="#c20029">Red</option>
-                <option value="#ff6d00" data-shadow="#c25500">Orange</option>
-                <option value="#ffea00" data-shadow="#c2b700">Yellow</option>
-                <option value="#00e676" data-shadow="#00b85d">Green</option>
-                <option value="#00e5ff" data-shadow="#00b6cc">Cyan</option>
-                <option value="#2979ff" data-shadow="#1f5fcc">Blue</option>
-                <option value="#651fff" data-shadow="#4e18c2">Purple</option>
-                <option value="#d500f9" data-shadow="#a600c6">Magenta</option>
-                <option value="#ff4081" data-shadow="#c23365">Pink</option>
-                <option value="#7c4dff" data-shadow="#5e3ac2">Indigo</option>
-                <option value="#1de9b6" data-shadow="#17b68f">Teal</option>
-                <option value="#ffa000" data-shadow="#c27c00">Amber</option>
-              </select>
-              <div
-                class="w-10 h-10 rounded-full border-2 border-gray-600"
-                id="edit-color-preview"
-              ></div>
-            </div>
-          </div>
-
-          <div class="flex gap-3">
-            <button
-              onclick="closeSoundEditModal()"
-              class="flex-1 p-3 px-6 border-none rounded-md text-base font-semibold cursor-pointer transition-colors duration-200 bg-gray-600 text-white hover:bg-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              onclick="saveSoundChanges()"
-              class="flex-1 p-3 px-6 border-none rounded-md text-base font-semibold cursor-pointer transition-colors duration-200 bg-blue-600 text-white hover:bg-blue-700"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <main class="pt-12 flex flex-col items-center gap-3 w-full max-w-4xl">
+      <main class="pt-16 flex flex-col items-center gap-3 w-full max-w-4xl">
         <!-- Sound buttons will be loaded here -->
         <div
           class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-8 w-full mx-auto px-5 justify-items-center"
@@ -221,7 +157,7 @@
           setupSortable();
         } else {
           editBtn.innerHTML =
-            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>';
+            '<img src="/static/icons/pencil.svg" width="20" height="20" alt="Edit" class="filter brightness-0 invert">';
           editBtn.classList.remove(
             "border-green-600",
             "text-green-400",
@@ -534,6 +470,115 @@
         btn.addEventListener("pointerup", up);
         btn.addEventListener("pointerleave", up);
         btn.addEventListener("pointercancel", up);
+      }
+
+      // Audio device management
+      let settingsPanelOpen = false;
+      let masterVolume = 100; // Global master volume (0-100)
+
+      function toggleSettingsPanel() {
+        settingsPanelOpen = !settingsPanelOpen;
+        const panel = document.getElementById("settings-panel");
+
+        if (settingsPanelOpen) {
+          panel.classList.remove("hidden");
+          loadAudioDevices();
+          // Update volume slider to current value
+          document.getElementById("volume-slider").value = masterVolume;
+          document.getElementById("volume-display").textContent =
+            masterVolume + "%";
+        } else {
+          panel.classList.add("hidden");
+        }
+      }
+
+      function updateMasterVolume(value) {
+        masterVolume = parseInt(value);
+        document.getElementById("volume-display").textContent =
+          masterVolume + "%";
+
+        // Send volume update to backend
+        fetch("/api/set-volume", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ volume: masterVolume }),
+        }).catch((error) => {
+          console.error("Error setting volume:", error);
+        });
+      }
+
+      function loadAudioDevices() {
+        fetch("/api/audio-devices")
+          .then((response) => response.json())
+          .then((data) => {
+            const select = document.getElementById("device-select");
+            select.innerHTML = "";
+
+            if (data.devices && data.devices.length > 0) {
+              data.devices.forEach((device) => {
+                const option = document.createElement("option");
+                option.value = device.id;
+                option.textContent = `${device.name} (${device.channels} ch)`;
+                if (device.is_default) {
+                  option.textContent += " [Default]";
+                }
+                if (device.id === data.current_device) {
+                  option.selected = true;
+                }
+                select.appendChild(option);
+              });
+            } else {
+              const option = document.createElement("option");
+              option.value = "";
+              option.textContent = "No audio devices found";
+              select.appendChild(option);
+            }
+
+            // Update volume slider with current volume from backend
+            if (data.volume !== undefined) {
+              masterVolume = data.volume;
+              document.getElementById("volume-slider").value = masterVolume;
+              document.getElementById("volume-display").textContent =
+                masterVolume + "%";
+            }
+          })
+          .catch((error) => {
+            console.error("Error loading audio devices:", error);
+            const select = document.getElementById("device-select");
+            select.innerHTML =
+              '<option value="">Error loading devices</option>';
+          });
+      }
+
+      function selectAudioDevice(deviceId) {
+        if (deviceId === "") return;
+
+        fetch("/api/select-device", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ device_id: parseInt(deviceId) }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              console.log("Audio device selected:", deviceId);
+            } else {
+              console.error("Error selecting device:", data.error);
+              alert("Error selecting audio device: " + data.error);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Error selecting audio device");
+          });
+      }
+
+      function refreshAudioDevices() {
+        loadAudioDevices();
       }
 
       // Initialize animations for existing buttons
