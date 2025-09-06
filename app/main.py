@@ -2,8 +2,7 @@ from fastapi import FastAPI, Form, UploadFile, File, Request, HTTPException, Dep
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.security import HTTPBearer
-from fastapi.middleware.cors import CORSMiddleware 
+from fastapi.security import HTTPBearer 
 from pathlib import Path
 import threading
 import uvicorn
@@ -24,16 +23,6 @@ from datetime import datetime, timedelta
 load_dotenv()
 
 app = FastAPI()
-
-# Add CORS middleware for nginx proxy compatibility
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Configure this to your domain in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 ROOT = Path(__file__).parent.resolve()
 templates = Jinja2Templates(directory=str(ROOT.parent / "templates"))
 
@@ -327,12 +316,7 @@ async def login_page():
     return FileResponse(ROOT.parent / "templates" / "login.html")
 
 @app.post("/api/login")
-async def login(request: Request, password: str = Form()):
-    # Debug logging for production issues
-    print(f"Login attempt - password received: {repr(password)}")
-    print(f"Expected password: {repr(SOUNDBOARD_PASSWORD)}")
-    print(f"Request headers: {dict(request.headers)}")
-    
+async def login(password: str = Form()):
     if password != SOUNDBOARD_PASSWORD:
         html_content = templates.get_template("status_message.html").render(
             message="Invalid password",
