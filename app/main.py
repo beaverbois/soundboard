@@ -9,6 +9,7 @@ import uvicorn
 import json
 import numpy as np
 import sounddevice as sd
+import platform
 from pydub import AudioSegment
 from pydub.silence import detect_silence
 from pydub.effects import normalize
@@ -23,6 +24,7 @@ from datetime import datetime, timedelta
 load_dotenv()
 
 app = FastAPI()
+
 ROOT = Path(__file__).parent.resolve()
 templates = Jinja2Templates(directory=str(ROOT.parent / "templates"))
 
@@ -52,7 +54,7 @@ audio_cache: Dict[str, np.ndarray] = {}
 sample_rate = 44100
 device_info = None
 active_streams = []
-MAX_CONCURRENT_STREAMS = 16
+MAX_CONCURRENT_STREAMS = 20
 selected_device_id = None  # User-selected audio output device
 master_volume = 1.0  # Master volume multiplier (0.0 to 1.0)
 
@@ -235,9 +237,6 @@ def play_sound_async(filename: str, volume: float = 1.0) -> None:
         
         # Create a new OutputStream for each sound to enable concurrent playback
         def audio_callback(outdata, frames, time, status):
-            if status:
-                print(f"Audio callback status: {status}")
-            
             # Get the current position in the audio
             current_frame = getattr(audio_callback, 'frame_index', 0)
             
@@ -274,14 +273,17 @@ def play_sound_async(filename: str, volume: float = 1.0) -> None:
         device_id = get_selected_device_id()
         
         # Create the output stream with smaller buffer for minimal latency
+        # Always use default device on Linux to avoid device conflicts
+        actual_device = None if platform.system() == 'Linux' else device_id
+        
         stream = sd.OutputStream(
             samplerate=sample_rate,
-            channels=max(channels, 2),  # Ensure at least stereo output
+            channels=2,  # Force stereo to avoid channel conflicts
             callback=audio_callback,
             finished_callback=lambda: cleanup_finished_streams(),
-            device=device_id,
-            blocksize=256,  # Small buffer for minimal latency
-            latency='low'   # Request low latency mode
+            device=actual_device,
+            blocksize=2048,
+            latency='low'
         )
         
         # Add to active streams list before starting
