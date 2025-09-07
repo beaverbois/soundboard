@@ -273,13 +273,15 @@ def play_sound_async(filename: str, volume: float = 1.0) -> None:
         # Get selected device
         device_id = get_selected_device_id()
         
-        # Create the output stream
+        # Create the output stream with smaller buffer for minimal latency
         stream = sd.OutputStream(
             samplerate=sample_rate,
             channels=max(channels, 2),  # Ensure at least stereo output
             callback=audio_callback,
             finished_callback=lambda: cleanup_finished_streams(),
-            device=device_id
+            device=device_id,
+            blocksize=256,  # Small buffer for minimal latency
+            latency='low'   # Request low latency mode
         )
         
         # Add to active streams list before starting
