@@ -54,7 +54,7 @@ audio_cache: Dict[str, np.ndarray] = {}
 sample_rate = 44100
 device_info = None
 active_streams = []
-MAX_CONCURRENT_STREAMS = 20
+MAX_CONCURRENT_STREAMS = 32
 selected_device_id = None  # User-selected audio output device
 master_volume = 1.0  # Master volume multiplier (0.0 to 1.0)
 
@@ -210,8 +210,19 @@ def get_current_user(auth_token: Optional[str] = Cookie(None)):
     return True
 
 def cleanup_finished_streams():
-    """Remove finished streams from active_streams list"""
+    """Remove finished streams from active_streams list and properly close them"""
     global active_streams
+    finished_streams = [stream for stream in active_streams if not stream.active]
+    
+    # Explicitly close finished streams to free PulseAudio connections
+    for stream in finished_streams:
+        try:
+            if not stream.closed:
+                stream.close()
+        except Exception as e:
+            print(f"Error closing stream: {e}")
+    
+    # Keep only active streams
     active_streams = [stream for stream in active_streams if stream.active]
 
 def play_sound_async(filename: str, volume: float = 1.0) -> None:
@@ -224,6 +235,10 @@ def play_sound_async(filename: str, volume: float = 1.0) -> None:
     
     # Clean up finished streams
     cleanup_finished_streams()
+    
+    # More aggressive cleanup if approaching limits
+    if len(active_streams) >= MAX_CONCURRENT_STREAMS * 0.8:  # At 80% capacity
+        cleanup_finished_streams()
     
     # Check if we're at the stream limit
     if len(active_streams) >= MAX_CONCURRENT_STREAMS:
