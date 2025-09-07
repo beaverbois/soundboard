@@ -10,4 +10,5 @@ if ! command -v uv >/dev/null 2>&1; then
     exit 1
 fi
 
+export ENVIRONMENT=development
 exec uv run fastapi dev --reload --host 0.0.0.0 --port 8000

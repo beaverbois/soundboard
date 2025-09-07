@@ -27,10 +27,13 @@ ROOT = Path(__file__).parent.resolve()
 templates = Jinja2Templates(directory=str(ROOT.parent / "templates"))
 
 # Authentication configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "fallback_secret_key_change_in_production")
-SOUNDBOARD_PASSWORD = os.getenv("SOUNDBOARD_PASSWORD", "default_password")
+SECRET_KEY = os.getenv("SECRET_KEY")
+SOUNDBOARD_PASSWORD = os.getenv("SOUNDBOARD_PASSWORD")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
+
+# Determine if running in production (secure cookies for HTTPS)
+IS_PRODUCTION = os.getenv("ENVIRONMENT") == "production"
 
 security = HTTPBearer(auto_error=False)
 
@@ -339,7 +342,7 @@ async def login(password: str = Form()):
         value=access_token,
         max_age=ACCESS_TOKEN_EXPIRE_HOURS * 3600,
         httponly=True,
-        secure=True,  # Required for HTTPS
+        secure=IS_PRODUCTION,  # True for production (HTTPS), False for development
         samesite="lax"
     )
     return response
@@ -347,7 +350,7 @@ async def login(password: str = Form()):
 @app.post("/api/logout")
 async def logout():
     response = RedirectResponse(url="/login", status_code=302)
-    response.delete_cookie(key="auth_token", secure=True, samesite="lax")
+    response.delete_cookie(key="auth_token", secure=IS_PRODUCTION, samesite="lax")
     return response
 
 @app.get("/api/sounds")
