@@ -212,7 +212,19 @@ def get_current_user(auth_token: Optional[str] = Cookie(None)):
 def cleanup_finished_streams():
     """Remove finished streams from active_streams list and properly close them"""
     global active_streams
-    finished_streams = [stream for stream in active_streams if not stream.active]
+    finished_streams = []
+    active_streams_temp = []
+    
+    # Safely check each stream's status
+    for stream in active_streams:
+        try:
+            if stream.active:
+                active_streams_temp.append(stream)
+            else:
+                finished_streams.append(stream)
+        except Exception as e:
+            # Stream pointer is invalid, consider it finished
+            finished_streams.append(stream)
     
     # Explicitly close finished streams to free PulseAudio connections
     for stream in finished_streams:
@@ -220,10 +232,10 @@ def cleanup_finished_streams():
             if not stream.closed:
                 stream.close()
         except Exception as e:
-            print(f"Error closing stream: {e}")
+            pass  # Ignore errors when closing invalid streams
     
-    # Keep only active streams
-    active_streams = [stream for stream in active_streams if stream.active]
+    # Update active streams list
+    active_streams = active_streams_temp
 
 def play_sound_async(filename: str, volume: float = 1.0) -> None:
     """Play sound from cache using sounddevice with concurrent playback and stream management"""
