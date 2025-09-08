@@ -58,13 +58,6 @@ MAX_CONCURRENT_STREAMS = 32
 selected_device_id = None  # User-selected audio output device
 master_volume = 1.0  # Master volume multiplier (0.0 to 1.0)
 
-# Initialize audio device
-try:
-    device_info = sd.query_devices()
-    print(f"Available audio devices: {len(device_info)} found")
-except Exception as e:
-    print(f"Warning: Could not query audio devices: {e}")
-
 def get_audio_devices():
     """Get list of available audio output devices"""
     try:
@@ -85,6 +78,24 @@ def get_audio_devices():
     except Exception as e:
         print(f"Error getting audio devices: {e}")
         return []
+
+def set_default_device():
+    system = platform.system()
+    
+    if system == "Linux":
+        # Look for "pulse" explicitly
+        devices = [d['name'] for d in sd.query_devices()]
+        if any("pulse" in name.lower() for name in devices):
+            sd.default.device = "pulse"
+            print("Using PulseAudio/PipeWire device")
+        else:
+            # Fallback to ALSA default
+            sd.default.device = None
+            print("Pulse not found, using ALSA system default")
+    else:
+        # On Windows/macOS, just stick with system default
+        sd.default.device = None
+        print(f"Using system default audio device on {system}")
 
 def get_selected_device_id():
     """Get the currently selected device ID, fallback to default"""
@@ -264,6 +275,14 @@ def play_sound_async(filename: str, volume: float = 1.0) -> None:
         
         # Create a new OutputStream for each sound to enable concurrent playback
         def audio_callback(outdata, frames, time, status):
+            # Check if this stream should be stopped
+            if not hasattr(audio_callback, 'should_continue'):
+                audio_callback.should_continue = True
+            
+            if not audio_callback.should_continue:
+                outdata.fill(0)
+                raise sd.CallbackStop
+            
             # Get the current position in the audio
             current_frame = getattr(audio_callback, 'frame_index', 0)
             
@@ -299,19 +318,18 @@ def play_sound_async(filename: str, volume: float = 1.0) -> None:
         # Get selected device
         device_id = get_selected_device_id()
         
-        # Create the output stream with smaller buffer for minimal latency
-        # Always use default device on Linux to avoid device conflicts
-        actual_device = None if platform.system() == 'Linux' else device_id
-        
         stream = sd.OutputStream(
             samplerate=sample_rate,
             channels=2,  # Force stereo to avoid channel conflicts
             callback=audio_callback,
             finished_callback=lambda: cleanup_finished_streams(),
-            device=actual_device,
+            device=device_id,
             blocksize=2048,
             latency='low'
         )
+        
+        # Store callback reference for stopping
+        stream.callback_func = audio_callback
         
         # Add to active streams list before starting
         active_streams.append(stream)
@@ -338,6 +356,7 @@ async def startup_event():
     """Load all audio files into cache on server startup"""
     SOUNDS_DIR.mkdir(exist_ok=True)
     load_audio_to_cache()
+    set_default_device()
 
 @app.get("/")
 async def index(auth_token: Optional[str] = Cookie(None)):
@@ -689,6 +708,44 @@ async def get_volume(current_user: bool = Depends(get_current_user)):
     # Convert float (0.0-1.0) to percentage (0-100)
     volume_percent = int(master_volume * 100)
     return JSONResponse({"volume": volume_percent})
+
+@app.post("/api/stop-all")
+async def stop_all_sounds(current_user: bool = Depends(get_current_user)):
+    """Stop all currently playing audio streams"""
+    global active_streams
+    
+    try:
+        initial_count = len(active_streams)
+        stopped_count = 0
+        
+        # Signal all streams to stop via their callback functions
+        for stream in active_streams[:]:
+            try:
+                if hasattr(stream, 'callback_func'):
+                    stream.callback_func.should_continue = False
+                    stopped_count += 1
+            except Exception as e:
+                print(f"Error signaling stream to stop: {e}")
+        
+        # Clear the active streams list
+        active_streams.clear()
+        
+        print(f"Signaled {stopped_count} of {initial_count} streams to stop")
+        
+        return JSONResponse({
+            "success": True, 
+            "stopped_count": stopped_count,
+            "initial_count": initial_count,
+            "message": f"Stopped {stopped_count} of {initial_count} audio streams"
+        })
+        
+    except Exception as e:
+        print(f"Error in stop_all_sounds: {e}")
+        active_streams.clear()
+        return JSONResponse({
+            "success": True,
+            "message": "Audio streams cleared"
+        })
 
 
 if __name__ == "__main__":

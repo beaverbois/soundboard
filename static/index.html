@@ -26,6 +26,22 @@
     <div
       class="min-h-screen flex flex-col items-center justify-center p-5 relative"
     >
+      <!-- Stop button (top right) -->
+      <button
+        id="stop-btn"
+        class="fixed w-12 h-12 rounded-full border-2 border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300 bg-gray-800 hover:bg-gray-700 transition-all duration-200 flex items-center justify-center active:scale-95 top-4 right-36 z-10"
+        onclick="stopAllSounds()"
+        aria-label="Stop all sounds"
+      >
+        <img
+          src="/static/icons/cancel.svg"
+          width="20"
+          height="20"
+          alt="Stop"
+          class="filter brightness-0 invert"
+        />
+      </button>
+
       <!-- Edit button (top right) -->
       <button
         id="edit-btn"
@@ -579,6 +595,27 @@
 
       function refreshAudioDevices() {
         loadAudioDevices();
+      }
+
+      // Stop all sounds function
+      function stopAllSounds() {
+        fetch("/api/stop-all", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              console.log(data.message);
+            } else {
+              console.error("Error stopping sounds:", data.error);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
       }
 
       // Initialize animations for existing buttons
