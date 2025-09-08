@@ -80,6 +80,7 @@ def get_audio_devices():
         return []
 
 def set_default_device():
+    global selected_device_id
     system = platform.system()
     
     if system == "Linux":
@@ -87,6 +88,7 @@ def set_default_device():
         devices = [d['name'] for d in sd.query_devices()]
         if any("pulse" in name.lower() for name in devices):
             sd.default.device = "pulse"
+            selected_device_id = sd.default.device
             print("Using PulseAudio/PipeWire device")
         else:
             # Fallback to ALSA default
