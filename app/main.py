@@ -85,18 +85,34 @@ def set_default_device():
     
     if system == "Linux":
         # Look for "pulse" explicitly
-        devices = [d['name'] for d in sd.query_devices()]
-        if any("pulse" in name.lower() for name in devices):
-            sd.default.device = "pulse"
-            selected_device_id = sd.default.device
-            print("Using PulseAudio/PipeWire device")
+        devices = sd.query_devices()
+        pulse_device_id = None
+        
+        # Find the pulse device ID
+        for i, device in enumerate(devices):
+            if device['max_output_channels'] > 0 and "pulse" in device['name'].lower():
+                pulse_device_id = i
+                break
+        
+        if pulse_device_id is not None:
+            sd.default.device = pulse_device_id
+            selected_device_id = pulse_device_id
+            print(f"Using PulseAudio/PipeWire device (ID: {pulse_device_id})")
         else:
-            # Fallback to ALSA default
+            # Fallback to system default
             sd.default.device = None
-            print("Pulse not found, using ALSA system default")
+            try:
+                selected_device_id = sd.default.device[1] if sd.default.device else None
+            except:
+                selected_device_id = None
+            print("Pulse not found, using system default")
     else:
         # On Windows/macOS, just stick with system default
         sd.default.device = None
+        try:
+            selected_device_id = sd.default.device[1] if sd.default.device else None
+        except:
+            selected_device_id = None
         print(f"Using system default audio device on {system}")
 
 def get_selected_device_id():
